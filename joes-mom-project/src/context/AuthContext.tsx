@@ -1,13 +1,22 @@
+// src/context/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "@/services/api";
 
-type JwtPayload = { email?: string; exp?: number };
+type JwtPayload = { email?: string; exp?: number; _id?: string };
+
+type Profile = { name: string; phone: string; mailingAddress: string };
+
 type AuthCtx = {
   token: string | null;
   ready: boolean;
   user?: JwtPayload | null;
   login: (email: string, password: string) => Promise<void>;
-  registerThenLogin: (email: string, password: string) => Promise<void>;
+  // ⬇️ accept optional profile (keeps old callers working)
+  registerThenLogin: (
+    email: string,
+    password: string,
+    profile?: Profile
+  ) => Promise<void>;
   logout: () => void;
 };
 
@@ -51,8 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(decode(res.token));
   };
 
-  const registerThenLogin = async (email: string, password: string) => {
-    const reg = await api.register(email, password);
+  const registerThenLogin = async (
+    email: string,
+    password: string,
+    profile?: Profile
+  ) => {
+    const reg = await api.register(email, password, profile);
     if (!reg.ok) throw new Error(reg.message || "Registration failed");
     await login(email, password);
   };

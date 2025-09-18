@@ -21,7 +21,8 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-app.use("/api/auth", require("./routes/auth"));
+const auth = require("./routes/auth"); // { router, getAuthedClientForUser, sendGmailWithAttachment }
+app.use("/api/auth", auth.router);
 app.use("/api/submissions", require("./routes/submissions"));
 
 const port = process.env.PORT || 5174;

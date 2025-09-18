@@ -10,6 +10,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
+    "types": ["vite/client", "vitest"],
     "paths": {
       "@/components/*": ["src/components/*"],
       "@/lib/*": ["src/lib/*"],
@@ -17,7 +18,9 @@
       "@/types": ["src/types.ts"],
       "@/context/*": ["src/context/*"],
       "@/routes/*": ["src/routes/*"],
-      "@/pages/*": ["src/pages/*"]
+      "@/pages/*": ["src/pages/*"],
+      "@/layouts/*": ["src/layouts/*"],
+      "@/types/*": ["src/types/*"]
     }
   },
   "include": ["src"]

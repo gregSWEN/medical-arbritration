@@ -71,6 +71,19 @@ export default function LoginPage() {
             Create one
           </Link>
         </p>
+
+        <button
+          type="button"
+          className="w-full rounded-xl bg-white border px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+          onClick={() => {
+            const r = "/home"; // or stay on current redirect choice
+            window.location.href = `${
+              import.meta.env.VITE_API_BASE || "http://localhost:5174"
+            }/api/auth/google/start?redirect=${encodeURIComponent(r)}`;
+          }}
+        >
+          Continue with Google
+        </button>
       </form>
     </div>
   );
