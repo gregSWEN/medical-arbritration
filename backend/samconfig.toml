@@ -1,0 +1,12 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "med-arb-api"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+
+[dev.deploy.parameters]
+stack_name = "med-arb-api-dev"
+
+[prod.deploy.parameters]
+stack_name = "med-arb-api-prod"
