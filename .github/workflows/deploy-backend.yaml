@@ -33,8 +33,7 @@ jobs:
 
       - name: Install backend deps
         working-directory: backend
-        run: cd backend/
-          npm ci
+        run: npm ci
 
       - name: SAM build
         working-directory: backend
