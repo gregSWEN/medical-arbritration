@@ -1,4 +1,4 @@
-name: Deploy Frontend (S3 + CloudFront)
+name: Deploy joes-mom-project (S3 + CloudFront)
 
 on:
   push:
@@ -34,18 +34,18 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Install deps
-        working-directory: frontend
+        working-directory: joes-mom-project
         run: npm ci
 
       - name: Build Vite (inject API URL)
-        working-directory: frontend
+        working-directory: joes-mom-project
         run: |
           echo "VITE_API_URL=${{ secrets[format('API_BASE_{0}', env.ENV)] }}" > .env
           npm run build
 
       - name: Sync to S3
         run: |
-          aws s3 sync frontend/dist s3://${{ secrets[format('FE_BUCKET_{0}', env.ENV)] }} --delete
+          aws s3 sync joes-mom-project/dist s3://${{ secrets[format('FE_BUCKET_{0}', env.ENV)] }} --delete
 
       - name: Invalidate CloudFront
         run: |
