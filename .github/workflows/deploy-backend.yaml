@@ -54,18 +54,35 @@ jobs:
 
       - name: Who am I / region
         run: |
+          set -e
           aws sts get-caller-identity
           aws configure list
 
-      - name: SAM deploy (explicit)
+      - name: SAM build (no container)
+        working-directory: backend
+        run: sam build --cached
+
+      - name: SAM deploy (explicit bucket + debug + wait)
         working-directory: backend
         env:
           STACK_NAME: med-arb-api-${{ env.CONFIG_ENV }}
+          ARTIFACT_BUCKET: ${{ secrets[format('SAM_ARTIFACT_BUCKET_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
         run: |
+          set -euo pipefail
+
+          echo "Ensuring artifacts bucket exists: $ARTIFACT_BUCKET (region $AWS_REGION)"
+          # For us-east-1, DO NOT set LocationConstraint
+          if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
+            aws s3api create-bucket --bucket "$ARTIFACT_BUCKET"
+            aws s3api put-bucket-versioning --bucket "$ARTIFACT_BUCKET" --versioning-configuration Status=Enabled
+          fi
+
+          echo "Deploying stack: $STACK_NAME"
           sam deploy \
+            --debug \
             --template-file template.yaml \
             --stack-name "$STACK_NAME" \
-            --resolve-s3 \
+            --s3-bucket "$ARTIFACT_BUCKET" \
             --region "$AWS_REGION" \
             --capabilities CAPABILITY_IAM \
             --no-confirm-changeset \
@@ -79,7 +96,12 @@ jobs:
               GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }} \
               GoogleRedirectUri=${{ secrets[format('GOOGLE_REDIRECT_URI_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
 
-          echo "---- Stack outputs ----"
+          echo "Waiting for stack to exist..."
+          aws cloudformation wait stack-exists \
+            --region "$AWS_REGION" \
+            --stack-name "$STACK_NAME"
+
+          echo "---- ApiBaseUrl ----"
           aws cloudformation describe-stacks \
             --region "$AWS_REGION" \
             --stack-name "$STACK_NAME" \
