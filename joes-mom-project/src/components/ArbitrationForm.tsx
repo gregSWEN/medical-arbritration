@@ -43,10 +43,10 @@ export default function ArbitrationForm() {
   const { token, user } = useAuth();
   const [lines, setLines] = useState(1);
   const [err, setErr] = useState<string | null>(null);
-  const [review, setReview] = useState<{
-    submissionId: string;
-    filename: string;
-  } | null>(null);
+  // const [review, setReview] = useState<{
+  //   submissionId: string;
+  //   filename: string;
+  // } | null>(null);
   const [templateDriveFileId, setTemplateDriveFileId] = useState("");
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
   const [afterGenMessage, setAfterGenMessage] = useState<string | null>(null);
@@ -181,7 +181,7 @@ export default function ArbitrationForm() {
         | undefined;
 
       if (!res?.ok || !created?._id) {
-        alert(res?.message || "Submission failed.");
+        // alert(res?.message || "Submission failed.");
         return;
       }
       // *** Require templateDriveFileId for now ***

@@ -1,11 +1,6 @@
 // File: src/components/CPTRow.tsx
-import React from "react";
 import { CPT_SUGGESTIONS } from "@/lib/cpt";
-import {
-  UseFormRegister,
-  UseFormSetValue,
-  UseFormWatch,
-} from "react-hook-form";
+import { UseFormRegister } from "react-hook-form";
 
 export type CPTFormLine = {
   code?: string;
