@@ -28,7 +28,7 @@ Parameters:
 Globals:
   Function:
     Runtime: nodejs20.x
-    Architecture: arm64
+    Architectures: [arm64]
     MemorySize: 512
     Timeout: 30
     Tracing: Active
@@ -59,7 +59,7 @@ Resources:
       Handler: lambda.handler
       CodeUri: .
       Policies:
-        - AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Events:
         Proxy:
           Type: HttpApi
