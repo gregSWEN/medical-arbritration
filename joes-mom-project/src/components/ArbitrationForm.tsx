@@ -181,7 +181,7 @@ export default function ArbitrationForm() {
         | undefined;
 
       if (!res?.ok || !created?._id) {
-        // alert(res?.message || "Submission failed."); // Tiny Commit
+        // alert(res?.message || "Submission failed."); // Tiny Committ
         return;
       }
       // *** Require templateDriveFileId for now ***
