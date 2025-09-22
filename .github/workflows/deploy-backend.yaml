@@ -52,18 +52,36 @@ jobs:
         working-directory: backend
         run: sam build --cached
 
-      - name: SAM deploy
+      - name: Who am I / region
+        run: |
+          aws sts get-caller-identity
+          aws configure list
+
+      - name: SAM deploy (explicit)
         working-directory: backend
+        env:
+          STACK_NAME: med-arb-api-${{ env.CONFIG_ENV }}
         run: |
           sam deploy \
-            --config-env $CONFIG_ENV \
+            --template-file template.yaml \
+            --stack-name "$STACK_NAME" \
+            --resolve-s3 \
+            --region "$AWS_REGION" \
+            --capabilities CAPABILITY_IAM \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --parameter-overrides \
-              EnvName=$CONFIG_ENV \
+              EnvName=${{ env.CONFIG_ENV }} \
               FrontendOrigin=${{ secrets[format('FE_ORIGIN_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }} \
               JwtSecret=${{ secrets[format('JWT_SECRET_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }} \
               MongoUrl=${{ secrets[format('MONGO_URL_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }} \
               GoogleClientId=${{ secrets.GOOGLE_CLIENT_ID }} \
               GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }} \
               GoogleRedirectUri=${{ secrets[format('GOOGLE_REDIRECT_URI_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
+
+          echo "---- Stack outputs ----"
+          aws cloudformation describe-stacks \
+            --region "$AWS_REGION" \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiBaseUrl'].OutputValue" \
+            --output text
