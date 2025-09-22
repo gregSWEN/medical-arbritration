@@ -44,6 +44,32 @@ Globals:
         GOOGLE_REDIRECT_URI: !Ref GoogleRedirectUri
 
 Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda.handler   # <- set this correctly (see notes below)
+      CodeUri: .
+      Runtime: nodejs20.x
+      Policies:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties: { ApiId: !Ref Api, Path: /{proxy+}, Method: ANY }
+        Root:
+          Type: HttpApi
+          Properties: { ApiId: !Ref Api, Path: /, Method: ANY }
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Sourcemap: false
+        Target: node20
+        Format: cjs
+        External:
+          - aws-sdk
+        # (no EntryPoints here on purpose)
+
   Api:
     Type: AWS::Serverless::HttpApi
     Properties:
@@ -78,7 +104,7 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         EntryPoints:
-          - lambda.ts # if your handler file is TS
+          - lambda.js # if your handler file is TS
           # - lambda.js      # (use this instead if it’s JS)
         Minify: true
         Sourcemap: false
