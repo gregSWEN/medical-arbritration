@@ -19,7 +19,7 @@ function createApp() {
   );
   app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
 
-  app.get("/health", (_req, res) => res.json({ ok: true })); // s
+  app.get("/health", (_req, res) => res.json({ ok: true })); // smal
 
   const auth = require("./routes/auth");
   app.use("/api/auth", auth.router);
