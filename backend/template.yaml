@@ -13,16 +13,12 @@ Parameters:
 
   JwtSecret:
     Type: String
-
   MongoUrl:
     Type: String
-
   GoogleClientId:
     Type: String
-
   GoogleClientSecret:
     Type: String
-
   GoogleRedirectUri:
     Type: String
 
@@ -57,7 +53,7 @@ Resources:
   ApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: lambda.handler # file: lambda.js, export: handler
+      Handler: lambda.handler
       CodeUri: .
       Policies:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
@@ -66,7 +62,7 @@ Resources:
           Type: HttpApi
           Properties:
             ApiId: !Ref Api
-            Path: "/{proxy+}" # quoted to be safe
+            Path: "/{proxy+}"
             Method: ANY
         Root:
           Type: HttpApi
@@ -78,13 +74,13 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         EntryPoints:
-          - lambda.js # <-- change to lambda.ts if your file is TS
+          - lambda.js # if you actually have lambda.ts, change to lambda.ts and add tsconfig.json
         Minify: true
         Sourcemap: false
         Target: node20
         Format: cjs
         External:
-          - aws-sdk # don’t bundle the v2 SDK
+          - aws-sdk
 
 Outputs:
   ApiBaseUrl:
