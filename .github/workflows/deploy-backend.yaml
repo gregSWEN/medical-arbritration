@@ -15,6 +15,7 @@ jobs:
       AWS_REGION: us-east-1
       CONFIG_ENV: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
       STACK_NAME: med-arb-api-${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -32,53 +33,30 @@ jobs:
       - name: Install SAM CLI
         uses: aws-actions/setup-sam@v2
 
-      - name: Who am I / region
-        run: |
-          aws sts get-caller-identity
-          aws configure list
+      # We only need esbuild on PATH for SAM's esbuild builder.
+      # We DON'T install backend node_modules to avoid huge artifacts.
+      - name: Install esbuild globally
+        run: npm i -g esbuild
 
-      - name: Install backend deps (include dev)
+      - name: Debug files
         working-directory: backend
+        run: |
+          node -v
+          npm -v
+          pwd
+          ls -la
+          # ensure handler exists:
+          test -f lambda.js && echo "lambda.js present ✔" || (echo "lambda.js missing ✖" && exit 1)
+
+      # If any leftover node_modules slipped into the repo, remove them so CopySource can't scoop them up.
+      - name: Ensure no local node_modules
+        working-directory: backend
+        run: rm -rf node_modules
+
+      # If a previous deploy left the stack in ROLLBACK_COMPLETE, delete it first
+      - name: Nuke stuck stack (ROLLBACK_COMPLETE)
         env:
-          NODE_ENV: "" # ensure not "production"
-        run: |
-          npm install --include=dev
-
-      - name: Ensure esbuild exists (just in case)
-        working-directory: backend
-        run: |
-          if ! npx --yes esbuild --version >/dev/null 2>&1; then
-            echo "esbuild missing; installing locally..."
-            npm i -D esbuild
-          fi
-          npx esbuild --version
-
-      - name: SAM build (try local, then fallback container)
-        working-directory: backend
-        run: |
-          set -e
-          if ! sam build --cached; then
-            echo "Local build failed; retrying with container..."
-            sam build --use-container
-          fi
-
-      - name: Determine artifact bucket
-        id: bucket
-        run: |
-          echo "bucket=${{ secrets[format('SAM_ARTIFACT_BUCKET_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}" >> $GITHUB_OUTPUT
-
-      - name: Ensure artifacts bucket exists
-        run: |
-          set -euo pipefail
-          ARTIFACT_BUCKET="${{ steps.bucket.outputs.bucket }}"
-          echo "Ensuring artifacts bucket exists: $ARTIFACT_BUCKET (region $AWS_REGION)"
-          if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
-            # us-east-1: no LocationConstraint
-            aws s3api create-bucket --bucket "$ARTIFACT_BUCKET"
-            aws s3api put-bucket-versioning --bucket "$ARTIFACT_BUCKET" --versioning-configuration Status=Enabled
-          fi
-
-      - name: Drop stuck stack if ROLLBACK_COMPLETE
+          STACK_NAME: ${{ env.STACK_NAME }}
         run: |
           set -euo pipefail
           STATUS=$(aws cloudformation describe-stacks \
@@ -87,15 +65,28 @@ jobs:
             --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_FOUND")
           echo "Current stack status: $STATUS"
           if [ "$STATUS" = "ROLLBACK_COMPLETE" ]; then
-            echo "Deleting stack $STACK_NAME to allow clean deploy..."
+            echo "Deleting stuck stack $STACK_NAME..."
             aws cloudformation delete-stack --region "$AWS_REGION" --stack-name "$STACK_NAME"
             aws cloudformation wait stack-delete-complete --region "$AWS_REGION" --stack-name "$STACK_NAME"
           fi
 
+      # Build WITHOUT containers
+      - name: SAM build (no container)
+        working-directory: backend
+        run: sam build --cached
+
+      # (Optional) show what will be shipped; the build output should be tiny (a few files)
+      - name: Show built artifact size
+        working-directory: backend/.aws-sam/build/ApiFunction
+        run: |
+          du -h -d 1 || true
+          find . -maxdepth 2 -type f -printf "%s %p\n" | sort -nr | head -20 || true
+
+      # Deploy using a precreated artifact bucket
       - name: SAM deploy
         working-directory: backend
         env:
-          ARTIFACT_BUCKET: ${{ steps.bucket.outputs.bucket }}
+          ARTIFACT_BUCKET: ${{ secrets[format('SAM_ARTIFACT_BUCKET_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
           FRONTEND_ORIGIN: ${{ secrets[format('FE_ORIGIN_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
           JWT_SECRET: ${{ secrets[format('JWT_SECRET_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
           MONGO_URL: ${{ secrets[format('MONGO_URL_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
@@ -104,6 +95,13 @@ jobs:
           GOOGLE_REDIRECT_URI: ${{ secrets[format('GOOGLE_REDIRECT_URI_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
         run: |
           set -euo pipefail
+
+          echo "Ensuring artifacts bucket exists: $ARTIFACT_BUCKET (region $AWS_REGION)"
+          if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
+            # us-east-1: do NOT supply LocationConstraint
+            aws s3api create-bucket --bucket "$ARTIFACT_BUCKET"
+            aws s3api put-bucket-versioning --bucket "$ARTIFACT_BUCKET" --versioning-configuration Status=Enabled
+          fi
 
           echo "PARAM lengths -> FO:${#FRONTEND_ORIGIN} JWT:${#JWT_SECRET} MONGO:${#MONGO_URL} GID:${#GOOGLE_CLIENT_ID} GSEC:${#GOOGLE_CLIENT_SECRET} GRURI:${#GOOGLE_REDIRECT_URI}"
 
@@ -125,14 +123,12 @@ jobs:
               GoogleClientSecret="$GOOGLE_CLIENT_SECRET" \
               GoogleRedirectUri="$GOOGLE_REDIRECT_URI"
 
-          echo "Waiting for stack to exist..."
-          aws cloudformation wait stack-exists --region "$AWS_REGION" --stack-name "$STACK_NAME"
-
-          echo "---- ApiBaseUrl ----"
-          API_BASE=$(aws cloudformation describe-stacks \
+      - name: Show ApiBaseUrl output
+        env:
+          STACK_NAME: ${{ env.STACK_NAME }}
+        run: |
+          aws cloudformation describe-stacks \
             --region "$AWS_REGION" \
             --stack-name "$STACK_NAME" \
             --query "Stacks[0].Outputs[?OutputKey=='ApiBaseUrl'].OutputValue" \
-            --output text)
-          echo "$API_BASE"
-          echo "api_base_url=$API_BASE" >> $GITHUB_OUTPUT
+            --output text
