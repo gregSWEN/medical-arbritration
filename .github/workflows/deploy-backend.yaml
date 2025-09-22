@@ -67,15 +67,23 @@ jobs:
         env:
           STACK_NAME: med-arb-api-${{ env.CONFIG_ENV }}
           ARTIFACT_BUCKET: ${{ secrets[format('SAM_ARTIFACT_BUCKET_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
+          FRONTEND_ORIGIN: ${{ secrets[format('FE_ORIGIN_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
+          JWT_SECRET: ${{ secrets[format('JWT_SECRET_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
+          MONGO_URL: ${{ secrets[format('MONGO_URL_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI: ${{ secrets[format('GOOGLE_REDIRECT_URI_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
         run: |
           set -euo pipefail
 
           echo "Ensuring artifacts bucket exists: $ARTIFACT_BUCKET (region $AWS_REGION)"
-          # For us-east-1, DO NOT set LocationConstraint
           if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
             aws s3api create-bucket --bucket "$ARTIFACT_BUCKET"
             aws s3api put-bucket-versioning --bucket "$ARTIFACT_BUCKET" --versioning-configuration Status=Enabled
           fi
+
+          # Redacted sanity check—just shows that values are NON-empty (length), not the secrets themselves
+          echo "PARAM lengths -> FO:${#FRONTEND_ORIGIN} JWT:${#JWT_SECRET} MONGO:${#MONGO_URL} GID:${#GOOGLE_CLIENT_ID} GSEC:${#GOOGLE_CLIENT_SECRET} GRURI:${#GOOGLE_REDIRECT_URI}"
 
           echo "Deploying stack: $STACK_NAME"
           sam deploy \
@@ -88,18 +96,16 @@ jobs:
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --parameter-overrides \
-              EnvName=${{ env.CONFIG_ENV }} \
-              FrontendOrigin=${{ secrets[format('FE_ORIGIN_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }} \
-              JwtSecret=${{ secrets[format('JWT_SECRET_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }} \
-              MongoUrl=${{ secrets[format('MONGO_URL_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }} \
-              GoogleClientId=${{ secrets.GOOGLE_CLIENT_ID }} \
-              GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }} \
-              GoogleRedirectUri=${{ secrets[format('GOOGLE_REDIRECT_URI_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
+              EnvName="$CONFIG_ENV" \
+              FrontendOrigin="$FRONTEND_ORIGIN" \
+              JwtSecret="$JWT_SECRET" \
+              MongoUrl="$MONGO_URL" \
+              GoogleClientId="$GOOGLE_CLIENT_ID" \
+              GoogleClientSecret="$GOOGLE_CLIENT_SECRET" \
+              GoogleRedirectUri="$GOOGLE_REDIRECT_URI"
 
           echo "Waiting for stack to exist..."
-          aws cloudformation wait stack-exists \
-            --region "$AWS_REGION" \
-            --stack-name "$STACK_NAME"
+          aws cloudformation wait stack-exists --region "$AWS_REGION" --stack-name "$STACK_NAME"
 
           echo "---- ApiBaseUrl ----"
           aws cloudformation describe-stacks \
