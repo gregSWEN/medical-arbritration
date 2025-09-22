@@ -62,6 +62,21 @@ jobs:
         working-directory: backend
         run: sam build --cached
 
+      - name: SAM delete stack
+        working-directory: backend
+        run: |
+          # BEFORE sam deploy:
+          STATUS=$(aws cloudformation describe-stacks \
+            --region "$AWS_REGION" \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_FOUND")
+
+          if [ "$STATUS" = "ROLLBACK_COMPLETE" ]; then
+            echo "Stack is ROLLBACK_COMPLETE; deleting so we can redeploy..."
+            aws cloudformation delete-stack --region "$AWS_REGION" --stack-name "$STACK_NAME"
+            aws cloudformation wait stack-delete-complete --region "$AWS_REGION" --stack-name "$STACK_NAME"
+          fi
+
       - name: SAM deploy (explicit bucket + debug + wait)
         working-directory: backend
         env:
