@@ -35,7 +35,10 @@ jobs:
 
       - name: Install deps
         working-directory: joes-mom-project
-        run: npm ci
+        env:
+          NODE_ENV: "" # make sure dev deps are included (vite, testing libs)
+        run: |
+          npm install --no-audit --no-fund
 
       - name: Build Vite (inject API URL)
         working-directory: joes-mom-project

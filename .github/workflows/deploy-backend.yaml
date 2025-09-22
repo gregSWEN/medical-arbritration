@@ -43,7 +43,10 @@ jobs:
 
       - name: Install backend deps
         working-directory: backend
-        run: npm ci --omit=dev || npm install --omit=dev --no-audit --no-fund
+        env:
+          NODE_ENV: "" # ensure dev deps aren't implicitly omitted by env
+        run: |
+          npm install --omit=dev --no-audit --no-fund
 
       - name: SAM build
         working-directory: backend
