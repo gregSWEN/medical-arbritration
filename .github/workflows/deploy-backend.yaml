@@ -33,12 +33,8 @@ jobs:
       - name: Install SAM CLI
         uses: aws-actions/setup-sam@v2
 
-      # We only need esbuild on PATH for SAM's esbuild builder.
-      # We DON'T install backend node_modules to avoid huge artifacts.
-      - name: Install esbuild globally
-        run: npm i -g esbuild
-
       - name: install backend deps
+        working-directory: backend
         run: npm ci
 
       - name: Debug files
