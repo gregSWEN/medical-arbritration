@@ -35,8 +35,9 @@ jobs:
 
       # We only need esbuild on PATH for SAM's esbuild builder.
       # We DON'T install backend node_modules to avoid huge artifacts.
-      - name: Install esbuild globally
-        run: npm i -g esbuild
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
 
       - name: Debug files
         working-directory: backend
