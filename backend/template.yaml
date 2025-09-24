@@ -90,33 +90,6 @@ Resources:
         External:
           - aws-sdk
 
-  Api:
-    Type: AWS::Serverless::HttpApi
-    Properties:
-      CorsConfiguration:
-        AllowOrigins: [!Ref FrontendOrigin]
-        AllowMethods: ["*"]
-        AllowHeaders: ["*"]
-        MaxAge: 86400
-      AccessLogSettings:
-        DestinationArn: !GetAtt ApiAccessLogs.Arn
-        Format: >
-          $context.requestId $context.identity.sourceIp $context.httpMethod
-          $context.routeKey $context.status $context.integrationStatus
-          $context.error.message
-
-  ApiAccessLogs:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/apigwv2/${AWS::StackName}/access"
-      RetentionInDays: 14
-
-  ApiFunctionLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${ApiFunction}"
-      RetentionInDays: 14
-
 Outputs:
   ApiBaseUrl:
     Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com"
