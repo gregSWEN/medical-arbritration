@@ -27,6 +27,13 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+
+      - name: Install esbuild (for SAM bundler)
+        run: npm install -g esbuild@0.23.0
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
