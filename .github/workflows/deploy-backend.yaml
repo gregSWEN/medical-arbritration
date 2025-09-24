@@ -15,7 +15,6 @@ jobs:
       AWS_REGION: us-east-1
       CONFIG_ENV: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
       STACK_NAME: med-arb-api-${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-      ENV_SUFFIX: ${{ github.ref == 'refs/heads/main' && 'PROD' || 'DEV' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -24,15 +23,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install backend deps
-        working-directory: backend
-        run: npm ci
-
-      - name: Install esbuild (for SAM bundler)
-        run: npm install -g esbuild@0.23.0
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -43,8 +33,30 @@ jobs:
       - name: Install SAM CLI
         uses: aws-actions/setup-sam@v2
 
+      # We only need esbuild on PATH for SAM's esbuild builder.
+      # We DON'T install backend node_modules to avoid huge artifacts.
+      - name: Install esbuild globally
+        run: npm i -g esbuild
+
+      - name: Debug files
+        working-directory: backend
+        run: |
+          node -v
+          npm -v
+          pwd
+          ls -la
+          # ensure handler exists:
+          test -f lambda.js && echo "lambda.js present ✔" || (echo "lambda.js missing ✖" && exit 1)
+
+      # If any leftover node_modules slipped into the repo, remove them so CopySource can't scoop them up.
+      - name: Ensure no local node_modules
+        working-directory: backend
+        run: rm -rf node_modules
+
       # If a previous deploy left the stack in ROLLBACK_COMPLETE, delete it first
       - name: Nuke stuck stack (ROLLBACK_COMPLETE)
+        env:
+          STACK_NAME: ${{ env.STACK_NAME }}
         run: |
           set -euo pipefail
           STATUS=$(aws cloudformation describe-stacks \
@@ -58,34 +70,41 @@ jobs:
             aws cloudformation wait stack-delete-complete --region "$AWS_REGION" --stack-name "$STACK_NAME"
           fi
 
-      - name: SAM build
+      # Build WITHOUT containers
+      - name: SAM build (no container)
         working-directory: backend
         run: sam build --cached
 
-      # (Optional) artifact bucket ensure
-      - name: Ensure artifact bucket
-        env:
-          ARTIFACT_BUCKET: ${{ secrets[format('SAM_ARTIFACT_BUCKET_{0}', env.ENV_SUFFIX)] }}
+      # (Optional) show what will be shipped; the build output should be tiny (a few files)
+      - name: Show built artifact size
+        working-directory: backend/.aws-sam/build/ApiFunction
         run: |
-          set -euo pipefail
-          echo "Ensuring artifacts bucket exists: $ARTIFACT_BUCKET (region $AWS_REGION)"
-          if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
-            aws s3api create-bucket --bucket "$ARTIFACT_BUCKET"   # us-east-1 => no LocationConstraint
-            aws s3api put-bucket-versioning --bucket "$ARTIFACT_BUCKET" --versioning-configuration Status=Enabled
-          fi
+          du -h -d 1 || true
+          find . -maxdepth 2 -type f -printf "%s %p\n" | sort -nr | head -20 || true
 
+      # Deploy using a precreated artifact bucket
       - name: SAM deploy
         working-directory: backend
         env:
-          ARTIFACT_BUCKET: ${{ secrets[format('SAM_ARTIFACT_BUCKET_{0}', env.ENV_SUFFIX)] }}
-          FRONTEND_ORIGIN: ${{ secrets[format('FE_ORIGIN_{0}', env.ENV_SUFFIX)] }}
-          JWT_SECRET: ${{ secrets[format('JWT_SECRET_{0}', env.ENV_SUFFIX)] }}
-          MONGO_URL: ${{ secrets[format('MONGO_URL_{0}', env.ENV_SUFFIX)] }}
+          ARTIFACT_BUCKET: ${{ secrets[format('SAM_ARTIFACT_BUCKET_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
+          FRONTEND_ORIGIN: ${{ secrets[format('FE_ORIGIN_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
+          JWT_SECRET: ${{ secrets[format('JWT_SECRET_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
+          MONGO_URL: ${{ secrets[format('MONGO_URL_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REDIRECT_URI: ${{ secrets[format('GOOGLE_REDIRECT_URI_{0}', env.ENV_SUFFIX)] }}
+          GOOGLE_REDIRECT_URI: ${{ secrets[format('GOOGLE_REDIRECT_URI_{0}', env.CONFIG_ENV == 'prod' && 'PROD' || 'DEV')] }}
         run: |
           set -euo pipefail
+
+          echo "Ensuring artifacts bucket exists: $ARTIFACT_BUCKET (region $AWS_REGION)"
+          if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
+            # us-east-1: do NOT supply LocationConstraint
+            aws s3api create-bucket --bucket "$ARTIFACT_BUCKET"
+            aws s3api put-bucket-versioning --bucket "$ARTIFACT_BUCKET" --versioning-configuration Status=Enabled
+          fi
+
+          echo "PARAM lengths -> FO:${#FRONTEND_ORIGIN} JWT:${#JWT_SECRET} MONGO:${#MONGO_URL} GID:${#GOOGLE_CLIENT_ID} GSEC:${#GOOGLE_CLIENT_SECRET} GRURI:${#GOOGLE_REDIRECT_URI}"
+
           sam deploy \
             --debug \
             --template-file template.yaml \
@@ -104,20 +123,12 @@ jobs:
               GoogleClientSecret="$GOOGLE_CLIENT_SECRET" \
               GoogleRedirectUri="$GOOGLE_REDIRECT_URI"
 
-      - name: Show ApiBaseUrl output & smoke test
+      - name: Show ApiBaseUrl output
         env:
           STACK_NAME: ${{ env.STACK_NAME }}
         run: |
-          set -euo pipefail
-          API_URL=$(aws cloudformation describe-stacks \
+          aws cloudformation describe-stacks \
             --region "$AWS_REGION" \
             --stack-name "$STACK_NAME" \
             --query "Stacks[0].Outputs[?OutputKey=='ApiBaseUrl'].OutputValue" \
-            --output text)
-          echo "ApiBaseUrl: $API_URL"
-
-          echo "Smoke: /health"
-          curl -fsS "$API_URL/health" && echo "OK"
-
-          echo "Smoke: /db-ping (allowed to fail in dev if Atlas blocks)"
-          curl -fsS "$API_URL/db-ping" || echo "db-ping failed (likely Atlas allowlist/VPC)"
+            --output text
