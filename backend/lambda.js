@@ -30,6 +30,7 @@ app.get("/db-ping", async (_req, res) => {
 
 // Keep Lambda from waiting on open DB sockets between invocations
 const wrapped = serverless(app, {
+  // small fix
   binary: ["application/pdf", "application/octet-stream"],
 });
 
