@@ -38,6 +38,9 @@ jobs:
       - name: Install esbuild globally
         run: npm i -g esbuild
 
+      - name: install backend deps
+        run: npm ci
+
       - name: Debug files
         working-directory: backend
         run: |
