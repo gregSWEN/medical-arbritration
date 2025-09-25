@@ -36,7 +36,10 @@ jobs:
       # We only need esbuild on PATH for SAM's esbuild builder.
       # We DON'T install backend node_modules to avoid huge artifacts.
       - name: Install packages
-        run: npm i
+        working-directory: backend
+        run: |
+          ls -hal
+          npm i
 
       - name: Debug files
         working-directory: backend
