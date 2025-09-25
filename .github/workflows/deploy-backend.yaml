@@ -52,10 +52,10 @@ jobs:
           # ensure handler exists:
           test -f lambda.js && echo "lambda.js present ✔" || (echo "lambda.js missing ✖" && exit 1)
 
-      # If any leftover node_modules slipped into the repo, remove them so CopySource can't scoop them up.
-      - name: Ensure no local node_modules
-        working-directory: backend
-        run: rm -rf node_modules
+      # # If any leftover node_modules slipped into the repo, remove them so CopySource can't scoop them up.
+      # - name: Ensure no local node_modules
+      #   working-directory: backend
+      #   run: rm -rf node_modules
 
       # If a previous deploy left the stack in ROLLBACK_COMPLETE, delete it first
       - name: Nuke stuck stack (ROLLBACK_COMPLETE)
