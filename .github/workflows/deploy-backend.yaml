@@ -39,6 +39,7 @@ jobs:
         working-directory: backend
         run: |
           ls -hal
+          npm i  -g esbuild
           npm i
 
       - name: Debug files
