@@ -14,6 +14,7 @@ jobs:
     env:
       AWS_REGION: us-east-1
       ENV: ${{ github.ref == 'refs/heads/main' && 'PROD' || 'DEV' }}
+      MODE: ${{ github.ref == 'refs/heads/main' && 'production' || 'dev' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -44,7 +45,7 @@ jobs:
         working-directory: joes-mom-project
         run: |
           echo "VITE_API_URL=${{ secrets[format('API_BASE_{0}', env.ENV)] }}" > .env
-          npm run build
+          npm run build -- --mode $MODE    # dev => .env.dev, main => .env.production
 
       - name: Sync to S3
         run: |
