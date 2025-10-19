@@ -11,7 +11,6 @@ async function ensureDb() {
     console.warn("MONGO_URL not set; skipping DB connect");
     return null;
   }
-
   // Already connected?
   if (mongoose.connection.readyState === 1) return mongoose; // 1 = connected
 
