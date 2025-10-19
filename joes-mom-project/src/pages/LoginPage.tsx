@@ -36,7 +36,6 @@ export default function LoginPage() {
           />
           Continue with Google
         </button>
-
         <div className="mt-8 text-xs text-slate-500">
           By signing in, you agree to our{" "}
           <a href="/terms" className="underline hover:text-sky-600">
