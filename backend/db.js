@@ -5,13 +5,12 @@ const mongoose = require("mongoose");
 let connectPromise;
 
 async function ensureDb() {
-  const uri = process.env.MONGO_URL;
+  const uri = process.env.MONGO_URI; // CHANGE TO URL FOR PROD
   // Don't crash cold start if env is missing; callers decide what to do
   if (!uri) {
     console.warn("MONGO_URL not set; skipping DB connect");
     return null;
   }
-
   // Already connected?
   if (mongoose.connection.readyState === 1) return mongoose; // 1 = connected
 
