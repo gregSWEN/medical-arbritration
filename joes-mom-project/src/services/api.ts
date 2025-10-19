@@ -15,14 +15,14 @@ function authHeaders() {
   const t = localStorage.getItem("token");
   return t ? { Authorization: `Bearer ${t}` } : { Authorization: `` };
 }
-async function http<T>(path: string, opts: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...opts,
-    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<T>;
-}
+// async function http<T>(path: string, opts: RequestInit = {}): Promise<T> {
+//   const res = await fetch(`${BASE_URL}${path}`, {
+//     ...opts,
+//     headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+//   });
+//   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+//   return res.json() as Promise<T>;
+// }
 
 export type WorkflowStatus =
   | "submitted"

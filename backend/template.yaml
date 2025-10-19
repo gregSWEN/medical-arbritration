@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Open Negotiation API (staging/prod) on Lambda + HTTP API
+
+Parameters:
+  EnvName:
+    Type: String
+    AllowedValues: [dev, prod]
+  FrontendOrigin:
+    Type: String
+    Description: Allowed CORS origin for this environment (e.g., https://dev.example.com)
+
+  JwtSecret:
+    Type: String
+
+  MongoUrl:
+    Type: String
+
+  GoogleClientId:
+    Type: String
+
+  GoogleClientSecret:
+    Type: String
+
+  GoogleRedirectUri:
+    Type: String
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures: [arm64]
+    MemorySize: 512
+    Timeout: 30
+    Tracing: Active
+    Environment:
+      Variables:
+        NODE_ENV: production
+        # serverless-http does NOT need a port, but leaving it is harmless
+        PORT: "5174"
+        FRONTEND_ORIGIN: !Ref FrontendOrigin
+        JWT_SECRET: !Ref JwtSecret
+        MONGO_URL: !Ref MongoUrl
+        GOOGLE_CLIENT_ID: !Ref GoogleClientId
+        GOOGLE_CLIENT_SECRET: !Ref GoogleClientSecret
+        GOOGLE_REDIRECT_URI: !Ref GoogleRedirectUri
+
+Resources:
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: [!Ref FrontendOrigin]
+        AllowMethods: ["*"]
+        AllowHeaders: ["*"]
+        MaxAge: 86400
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda.handler # your lambda.js exports module.exports.handler
+      CodeUri: . # points at backend folder
+      Policies:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /{proxy+}
+            Method: ANY
+        Root:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /
+            Method: ANY
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        # Important: tell SAM exactly what to bundle so the artifact is tiny.
+        # If your handler is JS, keep lambda.js. If it’s TS, change to lambda.ts.
+        EntryPoints:
+          - lambda.js
+        Minify: true
+        Sourcemap: false
+        Target: node20
+        Format: cjs
+        # Do not bundle v2 AWS SDK (already in runtime). Everything else will be bundled.
+        External:
+          - aws-sdk
+
+Outputs:
+  ApiBaseUrl:
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com"
+    Description: Base URL of the HTTP API

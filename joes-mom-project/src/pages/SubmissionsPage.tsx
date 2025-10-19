@@ -1,5 +1,5 @@
 // src/pages/SubmissionsPage.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, ListFilters, Phase, WorkflowStatus } from "@/services/api";
 import StatusBadge from "@/components/StatusBadge";
 import type { Submission } from "@/types/index";
