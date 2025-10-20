@@ -75,6 +75,8 @@ export default function ArbitrationForm() {
     mode: "onBlur",
   });
 
+  const showOverlay = isSubmitting || sending;
+
   useEffect(() => {
     if (user?.email) {
       setValue("submitterEmail", user.email, { shouldValidate: true });
@@ -223,223 +225,249 @@ export default function ArbitrationForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="mx-auto max-w-3xl space-y-6 rounded-2xl bg-white p-6 shadow"
+    <>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="mx-auto max-w-3xl space-y-6 rounded-2xl bg-white p-6 shadow"
+      >
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Negotiation Form Submission</h1>
+          {/* NEW: Template Drive file ID */}
+          <div>
+            <label className="text-sm font-medium">
+              Google Drive Template File ID
+            </label>
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              placeholder="Paste a Drive file ID (docx)"
+              value={templateDriveFileId}
+              onChange={(e) => setTemplateDriveFileId(e.target.value.trim())}
+              required
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              (We’ll fetch this .docx from your Google Drive, fill it, convert
+              to PDF, save to DB, and download it.)
+            </p>
+          </div>
+          {/* NEW: Autofill button (dev helper) */}
+          <button
+            type="button"
+            onClick={autofill}
+            className="rounded-lg bg-slate-100 px-3 py-2 text-sm hover:bg-slate-200"
+            title="Quick fill with sample data"
+          >
+            Autofill (dev)
+          </button>
+        </div>
+
+        {!token && (
+          <div className="rounded bg-amber-50 p-2 text-sm text-amber-900">
+            You must sign in to submit. Your email will be used on the PDF and
+            for sending messages.
+          </div>
+        )}
+        {err && (
+          <div className="rounded bg-red-50 p-2 text-sm text-red-700">
+            {err}
+          </div>
+        )}
+
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className="text-sm font-medium">ID#</label>
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              {...register("id")}
+            />
+            {errors.id && (
+              <p className="text-sm text-red-600">{errors.id.message}</p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">Claim No.</label>
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              {...register("claimNo")}
+            />
+            {errors.claimNo && (
+              <p className="text-sm text-red-600">{errors.claimNo.message}</p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">Patient</label>
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              {...register("patient")}
+            />
+            {errors.patient && (
+              <p className="text-sm text-red-600">{errors.patient.message}</p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">Insurance</label>
+            <select
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              {...register("insurance")}
+            >
+              <option value="">Select insurance</option>
+              {INSURERS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            {errors.insurance && (
+              <p className="text-sm text-red-600">{errors.insurance.message}</p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">Prov. Acct. No.</label>
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              {...register("providerAccountNo")}
+            />
+            {errors.providerAccountNo && (
+              <p className="text-sm text-red-600">
+                {errors.providerAccountNo.message}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">Doctor</label>
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              placeholder="e.g. Dr. Dhiraj Jeyanandarajan"
+              {...register("doctor")}
+            />
+            {errors.doctor && (
+              <p className="text-sm text-red-600">{errors.doctor.message}</p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">Date of Service</label>
+            <input
+              type="date"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              {...register("dateOfService")}
+            />
+            {errors.dateOfService && (
+              <p className="text-sm text-red-600">
+                {errors.dateOfService.message}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">Submitter Email</label>
+            <input
+              type="email"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-slate-50"
+              {...register("submitterEmail")}
+              value={user?.email || ""}
+              readOnly
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Using your signed-in email {user?.email ? `(${user.email})` : ""}.
+            </p>
+            {errors.submitterEmail && (
+              <p className="text-sm text-red-600">
+                {errors.submitterEmail.message}
+              </p>
+            )}
+          </div>
+        </section>
+
+        <hr />
+        <h2 className="text-lg font-semibold">CPT Codes (1–7)</h2>
+        <div className="space-y-3">
+          {Array.from({ length: lines }).map((_, i) => (
+            <CPTRow key={i} index={i} register={register} />
+          ))}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="rounded-lg bg-slate-100 px-3 py-2"
+              onClick={() => setLines((v) => Math.min(7, v + 1))}
+              disabled={lines >= 7}
+            >
+              + Add CPT
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-slate-100 px-3 py-2"
+              onClick={() => setLines((v) => Math.max(1, v - 1))}
+              disabled={lines <= 1}
+            >
+              – Remove
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 p-3">
+            <div className="text-sm text-slate-500">Total Billed (auto)</div>
+            <div className="text-xl font-semibold">
+              {fmt.format(totals.billed)}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 p-3">
+            <div className="text-sm text-slate-500">Total Paid (entered)</div>
+            <div className="text-xl font-semibold">
+              {fmt.format(totals.paid)}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 p-3">
+            <div className="text-sm text-slate-500">
+              Due Date (30 business days)
+            </div>
+            <div className="text-xl font-semibold">
+              {new Date(dueDateIso).toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <button
+            disabled={isSubmitting}
+            className="rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
+          >
+            {isSubmitting ? "Submitting…" : "Submit"}
+          </button>
+        </div>
+
+        {afterGenMessage && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+            <div className="mb-2">{afterGenMessage}</div>
+            <button
+              type="button"
+              onClick={onSendEmail}
+              disabled={sending || !lastCreatedId}
+              className="rounded-lg bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {sending ? "Sending…" : "Send Email"}
+            </button>
+          </div>
+        )}
+      </form>
+      {showOverlay && (
+        <SpinnerOverlay
+          label={isSubmitting ? "Generating your document…" : "Sending email…"}
+        />
+      )}
+    </>
+  );
+}
+
+function SpinnerOverlay({ label = "Working…" }: { label?: string }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 backdrop-blur-sm"
     >
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Negotiation Form Submission</h1>
-        {/* NEW: Template Drive file ID */}
-        <div>
-          <label className="text-sm font-medium">
-            Google Drive Template File ID
-          </label>
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="Paste a Drive file ID (docx)"
-            value={templateDriveFileId}
-            onChange={(e) => setTemplateDriveFileId(e.target.value.trim())}
-            required
-          />
-          <p className="text-xs text-slate-500 mt-1">
-            (We’ll fetch this .docx from your Google Drive, fill it, convert to
-            PDF, save to DB, and download it.)
-          </p>
-        </div>
-        {/* NEW: Autofill button (dev helper) */}
-        <button
-          type="button"
-          onClick={autofill}
-          className="rounded-lg bg-slate-100 px-3 py-2 text-sm hover:bg-slate-200"
-          title="Quick fill with sample data"
-        >
-          Autofill (dev)
-        </button>
+      <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/90 p-6 shadow-xl">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-300 border-t-sky-600" />
+        <p className="text-sm font-medium text-slate-700">{label}</p>
       </div>
-
-      {!token && (
-        <div className="rounded bg-amber-50 p-2 text-sm text-amber-900">
-          You must sign in to submit. Your email will be used on the PDF and for
-          sending messages.
-        </div>
-      )}
-      {err && (
-        <div className="rounded bg-red-50 p-2 text-sm text-red-700">{err}</div>
-      )}
-
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className="text-sm font-medium">ID#</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            {...register("id")}
-          />
-          {errors.id && (
-            <p className="text-sm text-red-600">{errors.id.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="text-sm font-medium">Claim No.</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            {...register("claimNo")}
-          />
-          {errors.claimNo && (
-            <p className="text-sm text-red-600">{errors.claimNo.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="text-sm font-medium">Patient</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            {...register("patient")}
-          />
-          {errors.patient && (
-            <p className="text-sm text-red-600">{errors.patient.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="text-sm font-medium">Insurance</label>
-          <select
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            {...register("insurance")}
-          >
-            <option value="">Select insurance</option>
-            {INSURERS.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          {errors.insurance && (
-            <p className="text-sm text-red-600">{errors.insurance.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="text-sm font-medium">Prov. Acct. No.</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            {...register("providerAccountNo")}
-          />
-          {errors.providerAccountNo && (
-            <p className="text-sm text-red-600">
-              {errors.providerAccountNo.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="text-sm font-medium">Doctor</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="e.g. Dr. Dhiraj Jeyanandarajan"
-            {...register("doctor")}
-          />
-          {errors.doctor && (
-            <p className="text-sm text-red-600">{errors.doctor.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="text-sm font-medium">Date of Service</label>
-          <input
-            type="date"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            {...register("dateOfService")}
-          />
-          {errors.dateOfService && (
-            <p className="text-sm text-red-600">
-              {errors.dateOfService.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="text-sm font-medium">Submitter Email</label>
-          <input
-            type="email"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-slate-50"
-            {...register("submitterEmail")}
-            value={user?.email || ""}
-            readOnly
-          />
-          <p className="mt-1 text-xs text-slate-500">
-            Using your signed-in email {user?.email ? `(${user.email})` : ""}.
-          </p>
-          {errors.submitterEmail && (
-            <p className="text-sm text-red-600">
-              {errors.submitterEmail.message}
-            </p>
-          )}
-        </div>
-      </section>
-
-      <hr />
-      <h2 className="text-lg font-semibold">CPT Codes (1–7)</h2>
-      <div className="space-y-3">
-        {Array.from({ length: lines }).map((_, i) => (
-          <CPTRow key={i} index={i} register={register} />
-        ))}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="rounded-lg bg-slate-100 px-3 py-2"
-            onClick={() => setLines((v) => Math.min(7, v + 1))}
-            disabled={lines >= 7}
-          >
-            + Add CPT
-          </button>
-          <button
-            type="button"
-            className="rounded-lg bg-slate-100 px-3 py-2"
-            onClick={() => setLines((v) => Math.max(1, v - 1))}
-            disabled={lines <= 1}
-          >
-            – Remove
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 p-3">
-          <div className="text-sm text-slate-500">Total Billed (auto)</div>
-          <div className="text-xl font-semibold">
-            {fmt.format(totals.billed)}
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 p-3">
-          <div className="text-sm text-slate-500">Total Paid (entered)</div>
-          <div className="text-xl font-semibold">{fmt.format(totals.paid)}</div>
-        </div>
-        <div className="rounded-xl border border-slate-200 p-3">
-          <div className="text-sm text-slate-500">
-            Due Date (30 business days)
-          </div>
-          <div className="text-xl font-semibold">
-            {new Date(dueDateIso).toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      <div className="pt-2">
-        <button
-          disabled={isSubmitting}
-          className="rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
-        >
-          {isSubmitting ? "Submitting…" : "Submit"}
-        </button>
-      </div>
-
-      {afterGenMessage && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
-          <div className="mb-2">{afterGenMessage}</div>
-          <button
-            type="button"
-            onClick={onSendEmail}
-            disabled={sending || !lastCreatedId}
-            className="rounded-lg bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {sending ? "Sending…" : "Send Email"}
-          </button>
-        </div>
-      )}
-    </form>
+    </div>
   );
 }
