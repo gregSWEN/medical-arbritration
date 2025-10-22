@@ -1,5 +1,5 @@
 // src/services/api.ts
-const BASE_URL = import.meta.env.VITE_API_URL ?? "";
+const BASE_URL = import.meta.env.VITE_API_BASE ?? "";
 
 type ApiResult<T = any> = { ok: boolean; message?: string } & T;
 
