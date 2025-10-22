@@ -28,7 +28,6 @@ export default function App() {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/oauth/callback" element={<OAuthCallback />} />
       <Route path="/oauth/callback" element={<OAuthLanding />} />
-      <Route path="/profile-setup" element={<ProfileSetupPage />} />
 
       {/* All protected pages share the same layout + navbar */}
       <Route element={<ProtectedRoute />}>
@@ -36,6 +35,7 @@ export default function App() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/form" element={<ArbitrationForm />} />
           <Route path="/submissions" element={<SubmissionsPage />} />
+          <Route path="/profile-setup" element={<ProfileSetupPage />} />
         </Route>
       </Route>
 
