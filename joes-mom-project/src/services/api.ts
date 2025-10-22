@@ -98,20 +98,38 @@ export const api = {
     return json;
   },
 
+  async getCurrentlyLoggedInUser(): Promise<
+    | ApiResult<{ user: any; needsProfile: boolean }>
+    | { ok: false; message: string }
+  > {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${BASE_URL}/api/auth/me`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const json = await res.json();
+      return json;
+    } catch (error) {
+      return { ok: false, message: "Failed to fetch user" };
+    }
+  },
   async completeProfile(body: {
     name: string;
     phone: string;
     mailingAddress: string;
+    templateGoogleDocId: string;
   }) {
     const token = localStorage.getItem("token");
-    const res = await fetch(`${BASE_URL}/api/auth/complete-profile`, {
+    const url = `${BASE_URL}/api/auth/complete-profile`;
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(body),
-      credentials: "include",
     });
     const json = await res.json();
     return json;
