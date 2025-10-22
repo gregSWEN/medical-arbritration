@@ -12,6 +12,7 @@ import type { Submission } from "@/types";
 import { downloadBlob } from "@/lib/pdf";
 import { api } from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const fmt = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -47,11 +48,12 @@ export default function ArbitrationForm() {
   //   submissionId: string;
   //   filename: string;
   // } | null>(null);
-  const [templateDriveFileId, setTemplateDriveFileId] = useState("");
+  const [templateGoogleDocId, setTemplateGoogleDocId] = useState("");
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
   const [afterGenMessage, setAfterGenMessage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-
+  const [currUser, setCurrUser] = useState(null);
+  const [needsProfile, setNeedsProfile] = useState(false);
   const {
     register,
     handleSubmit,
@@ -78,6 +80,15 @@ export default function ArbitrationForm() {
   const showOverlay = isSubmitting || sending;
 
   useEffect(() => {
+    if (token) {
+      api.getCurrentlyLoggedInUser().then((res) => {
+        if (res.ok) {
+          setCurrUser(res.user);
+          setTemplateGoogleDocId(res.user.templateGoogleDocId || "");
+          setNeedsProfile(res.needsProfile);
+        }
+      });
+    }
     if (user?.email) {
       setValue("submitterEmail", user.email, { shouldValidate: true });
     }
@@ -139,6 +150,12 @@ export default function ArbitrationForm() {
       setErr("You must be signed in to submit.");
       return;
     }
+    if (!templateGoogleDocId || templateGoogleDocId.trim() === "") {
+      setErr(
+        "Your profile is missing the Google Doc Template File ID. Please update your profile."
+      );
+      return;
+    }
 
     const hasCpt = (data.cpts ?? []).some(
       (l) => (l.code ?? "").trim().length > 0
@@ -186,14 +203,9 @@ export default function ArbitrationForm() {
         // alert(res?.message || "Submission failed."); // Tiny Committ
         return;
       }
-      // *** Require templateDriveFileId for now ***
-      if (!templateDriveFileId) {
-        alert("Please paste your Google Drive template file ID.");
-        return;
-      }
 
       // 2) Download the stored PDF straight away
-      await api.generateSubmissionPdf(created._id, templateDriveFileId);
+      await api.generateSubmissionPdf(created._id, templateGoogleDocId);
       const blob = await api.downloadSubmissionPdf(created._id);
       downloadBlob(blob, `${created.claimNo || "negotiation"}.pdf`);
 
@@ -223,6 +235,25 @@ export default function ArbitrationForm() {
       setSending(false);
     }
   }
+  const nav = useNavigate();
+
+  // early return guard UI
+  if (needsProfile) {
+    return (
+      <div className="mx-auto max-w-3xl rounded-2xl border bg-amber-50 p-6">
+        <h2 className="text-lg font-semibold">Complete your profile first</h2>
+        <p className="mt-2 text-sm text-amber-900">
+          We need your name, phone, and mailing address to generate documents.
+        </p>
+        <button
+          onClick={() => nav("/profile-setup?return=/arbitration")}
+          className="mt-4 rounded-lg bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
+        >
+          Go to Profile Setup
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -233,7 +264,7 @@ export default function ArbitrationForm() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Negotiation Form Submission</h1>
           {/* NEW: Template Drive file ID */}
-          <div>
+          {/* <div>
             <label className="text-sm font-medium">
               Google Drive Template File ID
             </label>
@@ -248,7 +279,7 @@ export default function ArbitrationForm() {
               (We’ll fetch this .docx from your Google Drive, fill it, convert
               to PDF, save to DB, and download it.)
             </p>
-          </div>
+          </div> */}
           {/* NEW: Autofill button (dev helper) */}
           <button
             type="button"
