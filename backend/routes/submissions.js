@@ -267,7 +267,7 @@ router.get("/:id/pdf", requireAuth, async (req, res) => {
 });
 function insurerEmailFor(name) {
   // TODO: replace with real mapping; for now always your test inbox
-  return process.env.TEST_INSURANCE_EMAIL || "gregvillafane1@gmail.com";
+  return process.env.TEST_INSURANCE_EMAIL || "josephpagnotta123@gmail.com";
 }
 
 router.post("/:id/email", requireAuth, async (req, res) => {

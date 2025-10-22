@@ -9,7 +9,7 @@ export default function LoginPage() {
   const handleGoogleLogin = () => {
     const redirect = "/home"; // your app redirect
     window.location.href = `${
-      import.meta.env.VITE_API_BASE || "http://localhost:5174"
+      import.meta.env.VITE_API_BASE
     }/api/auth/google/start?redirect=${encodeURIComponent(redirect)}`;
   };
 
