@@ -5,6 +5,7 @@ const User = require("../models/User");
 const { OAuth2Client } = require("google-auth-library");
 const { google } = require("googleapis");
 const { requireAuth } = require("../middleware/auth");
+const { extractDriveId } = require("../utils/extractDriveId");
 
 const {
   GOOGLE_CLIENT_ID,
@@ -245,16 +246,33 @@ router.post("/register", async (req, res) => {
 
 // POST /api/auth/complete-profile
 // body: { name, phone, mailingAddress }
+
 router.post("/complete-profile", requireAuth, async (req, res) => {
   try {
-    const { name, phone, mailingAddress } = req.body || {};
-    if (!name || !phone || !mailingAddress) {
+    const { name, phone, mailingAddress, templateGoogleDocId } = req.body || {};
+    if (!name || !phone || !mailingAddress || !templateGoogleDocId) {
       return res.status(400).json({ ok: false, message: "Missing fields" });
     }
+
+    const extraxtedDriveId = extractDriveId(templateGoogleDocId);
+    if (!extraxtedDriveId) {
+      return res
+        .status(400)
+        .json({ ok: false, message: "Invalid Google Doc link or file ID" });
+    }
+
     await User.updateOne(
       { _id: req.user._id },
-      { $set: { name, phone, mailingAddress } }
+      {
+        $set: {
+          name,
+          phone,
+          mailingAddress,
+          templateGoogleDocId: extraxtedDriveId,
+        },
+      }
     );
+
     return res.json({ ok: true });
   } catch (e) {
     console.error("complete-profile error:", e);
@@ -308,8 +326,14 @@ router.get("/me", requireAuth, async (req, res) => {
     const user = await User.findById(req.user._id).lean();
     if (!user) return res.status(404).json({ ok: false });
 
-    const needsProfile = !user.name || !user.phone || !user.mailingAddress;
-
+    const needsProfile =
+      !user.name ||
+      !user.phone ||
+      !user.mailingAddress ||
+      user.templateGoogleDocId === undefined ||
+      user.templateGoogleDocId === "";
+    const templateID = user.templateGoogleDocId;
+    console.log("templateID:", templateID);
     // Only return what the client needs
     const out = {
       _id: user._id,
@@ -317,6 +341,7 @@ router.get("/me", requireAuth, async (req, res) => {
       name: user.name || "",
       phone: user.phone || "",
       mailingAddress: user.mailingAddress || "",
+      templateGoogleDocId: user.templateGoogleDocId || "",
     };
 
     res.json({ ok: true, user: out, needsProfile });

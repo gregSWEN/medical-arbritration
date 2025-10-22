@@ -32,6 +32,9 @@ export default function NavBar() {
           <NavLink to="/submissions" className={linkClass}>
             Recent
           </NavLink>
+          <NavLink to="/profile-setup" className={linkClass}>
+            Profile
+          </NavLink>
         </div>
 
         <div className="flex items-center gap-2">
