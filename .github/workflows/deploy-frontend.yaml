@@ -45,7 +45,7 @@ jobs:
         working-directory: joes-mom-project
         run: |
           VITE_API_BASE="${{ secrets[format('API_BASE_{0}', env.ENV)] }}" \
-          echo "VITE_API_URL=${VITE_API_URL}" 
+          echo "VITE_API_BASE=${VITE_API_BASE}" 
           npm run build
 
       - name: Sync to S3
