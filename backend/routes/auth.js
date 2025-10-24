@@ -179,6 +179,7 @@ router.get("/google/callback", async (req, res) => {
     const dest = `${FRONTEND_ORIGIN}/oauth/callback?token=${encodeURIComponent(
       appToken
     )}&r=${encodeURIComponent(redirect)}${needsProfile ? "&np=1" : ""}`;
+    console.log("OAuth success, in /google/callback redirecting to:", dest);
     return res.redirect(dest);
   } catch (err) {
     console.error("Google OAuth callback error:", err);
