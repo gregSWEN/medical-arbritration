@@ -17,7 +17,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-sky-50 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white shadow-xl p-8 text-center">
         <h1 className="text-2xl font-bold text-slate-800 mb-6">
-          Welcome to Joe's Mom Project
+          Welcome to Med Arb Group
         </h1>
         <p className="text-slate-600 mb-8 text-sm">
           Sign in securely with your Google account
