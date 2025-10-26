@@ -1,10 +1,5 @@
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-
 export default function LoginPage() {
   const BASE_URL = import.meta.env.VITE_API_BASE ?? "";
-  const nav = useNavigate();
-  const { login } = useAuth();
 
   const handleGoogleLogin = () => {
     const redirect = "/home"; // your app redirect
