@@ -1,23 +1,24 @@
-import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
+  const BASE_URL = import.meta.env.VITE_API_BASE ?? "";
   const nav = useNavigate();
   const { login } = useAuth();
 
   const handleGoogleLogin = () => {
     const redirect = "/home"; // your app redirect
-    window.location.href = `${
-      import.meta.env.VITE_API_BASE
-    }/api/auth/google/start?redirect=${encodeURIComponent(redirect)}`;
+    console.log("Initiating Google login, redirect to:", BASE_URL);
+    window.location.href = `${BASE_URL}/api/auth/google/start?redirect=${encodeURIComponent(
+      redirect
+    )}`;
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-sky-50 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white shadow-xl p-8 text-center">
         <h1 className="text-2xl font-bold text-slate-800 mb-6">
-          Welcome to Joe's Mom Project
+          Welcome to Med Arb Group
         </h1>
         <p className="text-slate-600 mb-8 text-sm">
           Sign in securely with your Google account

@@ -112,6 +112,7 @@ router.get("/google/start", (req, res) => {
     "https://www.googleapis.com/auth/gmail.send",
   ];
 
+  console.log("Redirect URL: ", process.env.GOOGLE_REDIRECT_URI);
   const client = makeOAuthClient();
   const url = client.generateAuthUrl({
     access_type: "offline", // want refresh_token
@@ -178,7 +179,8 @@ router.get("/google/callback", async (req, res) => {
     const appToken = signToken(user);
     const dest = `${FRONTEND_ORIGIN}/oauth/callback?token=${encodeURIComponent(
       appToken
-    )}&r=${encodeURIComponent(redirect)}${needsProfile ? "&np=1" : ""}`;
+    )}&r=${encodeURIComponent(redirect)}`;
+    console.log("OAuth success, in /google/callback redirecting to:", dest);
     return res.redirect(dest);
   } catch (err) {
     console.error("Google OAuth callback error:", err);
