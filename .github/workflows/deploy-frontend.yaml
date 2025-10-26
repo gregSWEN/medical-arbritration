@@ -44,10 +44,10 @@ jobs:
       - name: Build Vite (inject API URL)
         working-directory: joes-mom-project
         run: |
-          VITE_API_BASE="${{ secrets[format('API_BASE_{0}', env.ENV)] }}" \
-          echo "Setting VITE_API_BASE to ${VITE_API_BASE}"
-          echo "Mode: ${MODE}"
-          echo "VITE_API_BASE=${VITE_API_BASE}"  # why doesn't this work ?
+          export VITE_API_BASE="${{ secrets[format('API_BASE_{0}', env.ENV)] }}"
+          echo "ENV=${ENV} MODE=${MODE}"
+          echo "Using VITE_API_BASE=${VITE_API_BASE}"
+          [ -z "${VITE_API_BASE}" ] && { echo "VITE_API_BASE is EMPTY"; exit 1; } || echo "VITE_API_BASE is set"
           npm run build
 
       - name: Sync to S3
