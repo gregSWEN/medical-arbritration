@@ -1,16 +1,17 @@
-import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
+  const BASE_URL = import.meta.env.VITE_API_BASE ?? "";
   const nav = useNavigate();
   const { login } = useAuth();
 
   const handleGoogleLogin = () => {
     const redirect = "/home"; // your app redirect
-    window.location.href = `${
-      import.meta.env.VITE_API_BASE
-    }/api/auth/google/start?redirect=${encodeURIComponent(redirect)}`;
+    console.log("Initiating Google login, redirect to:", BASE_URL);
+    window.location.href = `${BASE_URL}/api/auth/google/start?redirect=${encodeURIComponent(
+      redirect
+    )}`;
   };
 
   return (
