@@ -19,6 +19,13 @@ const fmt = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
+// cents helpers
+function round2(n: number) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+function isTwoDecimal(n: number) {
+  return Number.isInteger(Math.round(n * 100)); // <-- always true for finite n
+}
 const schema = z.object({
   id: z.string().min(1, "Required"),
   claimNo: z.string().min(1, "Required"),
@@ -32,8 +39,16 @@ const schema = z.object({
     .array(
       z.object({
         code: z.string().optional(),
-        count: z.number().optional(),
-        initialPayment: z.number().optional(),
+        count: z.coerce.number().int().min(1).optional(),
+        initialPayment: z.preprocess(
+          (v) => (v === "" || v === null ? undefined : v),
+          z.coerce
+            .number()
+            .min(0, "Must be ≥ 0")
+            .refine(isTwoDecimal, "Max 2 decimal places")
+            .transform(round2)
+            .optional()
+        ),
       })
     )
     .min(1)
@@ -100,10 +115,13 @@ export default function ArbitrationForm() {
     const billed = (values.cpts ?? [])
       .filter((l) => l?.code)
       .reduce((sum, l) => sum + (CPT_PRICE[l.code!] ?? 0) * (l.count ?? 1), 0);
-    const paid = (values.cpts ?? []).reduce(
+
+    const paidRaw = (values.cpts ?? []).reduce(
       (sum, l) => sum + (l.initialPayment ?? 0),
       0
     );
+    const paid = round2(paidRaw);
+
     return { billed, paid };
   }, [values.cpts]);
 
@@ -171,7 +189,7 @@ export default function ArbitrationForm() {
       .map((l) => ({
         code: l.code!.trim(),
         count: Math.max(1, l.count ?? 1),
-        initialPayment: Math.max(0, l.initialPayment ?? 0),
+        initialPayment: round2(Math.max(0, l.initialPayment ?? 0)),
       }));
 
     const payload: Submission = {
@@ -263,23 +281,6 @@ export default function ArbitrationForm() {
       >
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Negotiation Form Submission</h1>
-          {/* NEW: Template Drive file ID */}
-          {/* <div>
-            <label className="text-sm font-medium">
-              Google Drive Template File ID
-            </label>
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-              placeholder="Paste a Drive file ID (docx)"
-              value={templateDriveFileId}
-              onChange={(e) => setTemplateDriveFileId(e.target.value.trim())}
-              required
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              (We’ll fetch this .docx from your Google Drive, fill it, convert
-              to PDF, save to DB, and download it.)
-            </p>
-          </div> */}
           {/* NEW: Autofill button (dev helper) */}
           <button
             type="button"
@@ -441,7 +442,7 @@ export default function ArbitrationForm() {
             </div>
           </div>
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-sm text-slate-500">Total Paid (entered)</div>
+            <div className="text-sm text-slate-500">Total Paid (auto)</div>
             <div className="text-xl font-semibold">
               {fmt.format(totals.paid)}
             </div>
