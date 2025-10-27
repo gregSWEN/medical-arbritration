@@ -42,9 +42,14 @@ export function CPTRow({
         <input
           type="number"
           min={0}
+          step="0.01" // or step="any"
+          inputMode="decimal" // better mobile keyboard
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-          placeholder="0"
-          {...register(id("initialPayment"), { valueAsNumber: true })}
+          placeholder="0.00"
+          {...register(id("initialPayment"), {
+            valueAsNumber: true,
+            setValueAs: (v) => (v === "" || v === null ? undefined : Number(v)),
+          })}
         />
       </div>
 
