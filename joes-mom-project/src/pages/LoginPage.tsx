@@ -7,6 +7,10 @@ export default function LoginPage() {
     window.location.href = `${BASE_URL}/api/auth/google/start?redirect=${encodeURIComponent(
       redirect
     )}`;
+    console.log("Initiating Google login, redirect to:", BASE_URL);
+    window.location.href = `${BASE_URL}/api/auth/google/start?redirect=${encodeURIComponent(
+      redirect
+    )}`;
   };
 
   return (
